@@ -2,29 +2,42 @@ import requests
 import json
 from datetime import datetime, timedelta
 import time
+import re
 
 # set up parameters for data model
 tenant_id = "add3b991-e43e-46af-9738-637484ef4f25"
 
+def extract_ids_from_url(url):
+    """Extract workspace_id and dataset_id from a Power BI URL."""
+    try:
+        # Pattern for Power BI URLs
+        pattern = r"groups/([^/]+)/datasets/([^/]+)"
+        match = re.search(pattern, url)
+        if not match:
+            raise ValueError("Invalid Power BI URL format")
+        return match.group(1), match.group(2)
+    except Exception as e:
+        print(f"Error parsing URL: {e}")
+        return None, None
 
+# Prompt for dataset URL and refresh options
+dataset_url = input("Enter the Power BI dataset URL: ")
+workspace_id, dataset_id = extract_ids_from_url(dataset_url)
 
-# Prompt for workspace and dataset IDs
-workspace_id = input("Enter the Workspace ID: ")
-dataset_id = input("Enter the Dataset ID: ")
+if not workspace_id or not dataset_id:
+    print("Failed to extract workspace and dataset IDs from URL. Please check the URL format.")
+    exit(1)
+
 refresh_full = input("Fully refresh model (Y/N)?: ")
 report_back = input("Report back on refresh status (Y/N)?: ")
 
-
 report_refresh_status = True if report_back.lower() == 'y' else False
 
-
 # Set correct api apply_refresh_policy
-
-
-if refresh_full.lower() == 'y': # Full
+if refresh_full.lower() == 'y':  # Full
     apply_refresh_policy = False
     refresh_type = 'Full'
-else: # Delta
+else:  # Delta
     apply_refresh_policy = True
     refresh_type = 'Full'
 
@@ -95,7 +108,7 @@ def wait_for_refresh_completion(workspace_id, dataset_id, request_id, access_tok
         if status == 'Completed':
             return f"Refresh completed for dataset_id: {dataset_id} and refresh_id {refresh_id}"
         if time.time() - start_time > timeout:
-            return "Timeout reached. The refresh did not complete within the specified time for dataset_id: {dataset_id} and refresh_id {refresh_id}"
+            return f"Timeout reached. The refresh did not complete within the specified time for dataset_id: {dataset_id} and refresh_id {refresh_id}"
         
         print("Refresh still in progress, checking again in 30 seconds...")
         time.sleep(30)
@@ -103,14 +116,15 @@ def wait_for_refresh_completion(workspace_id, dataset_id, request_id, access_tok
 # Get secrets for authentication to PBI API
 client_id, client_secret = get_credentials_from_file('pbi_client_info_secret.json')
 
-refresh_timeout = 3000 # Default timeout for pbi model refreshes
+refresh_timeout = 3000  # Default timeout for pbi model refreshes
 
 # Generate access token for authentication
 access_token = get_access_token(client_id, client_secret, tenant_id)
 
-
 print("apply_refresh_policy:", apply_refresh_policy)
 print("refresh_type:", refresh_type)
+print(f"Workspace ID: {workspace_id}")
+print(f"Dataset ID: {dataset_id}")
 
 # Initiate refresh operation
 refresh_response, request_id = refresh_dataset(
