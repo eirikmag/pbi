@@ -2,7 +2,10 @@ import requests
 import json
 from datetime import datetime, timedelta
 import time
-import re
+import os
+
+# Get the directory containing the script
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # set up parameters for data model
 tenant_id = "add3b991-e43e-46af-9738-637484ef4f25"
@@ -10,12 +13,9 @@ tenant_id = "add3b991-e43e-46af-9738-637484ef4f25"
 def extract_ids_from_url(url):
     """Extract workspace_id and dataset_id from a Power BI URL."""
     try:
-        # Pattern for Power BI URLs
-        pattern = r"groups/([^/]+)/datasets/([^/]+)"
-        match = re.search(pattern, url)
-        if not match:
-            raise ValueError("Invalid Power BI URL format")
-        return match.group(1), match.group(2)
+        workspace_id = url.split('/groups/')[1].split('/')[0]
+        dataset_id = url.split('/datasets/')[1].split('/')[0].split('?')[0]
+        return workspace_id, dataset_id
     except Exception as e:
         print(f"Error parsing URL: {e}")
         return None, None
@@ -42,7 +42,8 @@ else:  # Delta
     refresh_type = 'Full'
 
 def get_credentials_from_file(filepath):
-    with open(filepath, 'r') as file:
+    full_path = os.path.join(SCRIPT_DIR, filepath)
+    with open(full_path, 'r') as file:
         data = json.load(file)
     return data.get("client_id"), data.get("client_secret")
 
